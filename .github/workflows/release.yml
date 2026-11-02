@@ -1,0 +1,44 @@
+# Push a tag like v1.0.0 -> builds Z Launcher + ZMonitor and publishes a GitHub Release with the zip.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build and package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $name = "ZLauncher-$version-win-x64"
+          $dist = "dist\$name"
+          dotnet publish src\ZMonitor\ZMonitor.csproj -c Release -o "$dist\ZMonitor" -p:Version=$version
+          dotnet publish src\ZLauncher\ZLauncher.csproj -c Release -o "$dist\ZLauncher" -p:Version=$version
+          Get-ChildItem $dist -Recurse -Filter *.pdb | Remove-Item
+          Copy-Item packaging\install.cmd, README.md $dist
+          Compress-Archive -Path "$dist\*" -DestinationPath "dist\$name.zip"
+          "ZIP=dist\$name.zip" >> $env:GITHUB_ENV
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP }}
+          generate_release_notes: true
+          body: |
+            ## Install
+            1. Install the [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) if you don't have it.
+            2. Download the zip below, extract it, and run **install.cmd**.
+            3. Open **Z Launcher** from the Start menu. In **Widgets**, switch on **ZMonitor** (it asks for admin once; turn on *Start with Windows* to skip that from then on).
+
+            ZMonitor needs the [PawnIO](https://pawnio.eu) driver for CPU power / temperature.
