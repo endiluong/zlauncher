@@ -2,6 +2,8 @@
 
 Frosted-glass, always-on-top hardware widget for Windows 11 (WPF / .NET 10).
 
+<img src="../../assets/screenshots/zmonitor.png" alt="ZMonitor widget" height="560">
+
 | Shows | Source |
 |---|---|
 | FPS, 1% low, frame time of the foreground app | Real-time ETW session on the DXGI / D3D9 / DxgKrnl present events (the same events PresentMon uses). No RTSS / Afterburner, no injection into games. |

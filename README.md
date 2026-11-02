@@ -2,6 +2,17 @@
 
 A frosted-glass launcher for Windows 11 with two sides behind a sliding pill: **Apps** and **Widgets**.
 
+<table>
+  <tr>
+    <td align="center"><img src="assets/screenshots/zlauncher.png" alt="Z Launcher, Widgets tab controlling ZMonitor" height="560"></td>
+    <td align="center"><img src="assets/screenshots/zmonitor.png" alt="ZMonitor widget with FPS, CPU, GPU, memory and network" height="560"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Z Launcher</b>: Widgets tab</td>
+    <td align="center"><b>ZMonitor</b>: Memory collapsed, Network expanded</td>
+  </tr>
+</table>
+
 > **For now Z Launcher only controls widgets:** the Apps side and the pill are hidden.
 > To bring them back, set `AppsEnabled = true` in [`MainWindow.xaml.cs`](src/ZLauncher/MainWindow.xaml.cs).
 
