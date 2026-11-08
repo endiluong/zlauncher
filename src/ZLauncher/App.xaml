@@ -148,6 +148,78 @@
             </Setter>
         </Style>
 
+        <!-- ZBoard's icon (same shapes as zboard/web/public/icon.svg) -->
+        <Viewbox x:Key="ZBoardIcon" x:Shared="False" Stretch="Uniform">
+            <Canvas Width="512" Height="512">
+                <Rectangle Width="512" Height="512" RadiusX="112" RadiusY="112" Fill="#2F6FDE"/>
+                <Rectangle Canvas.Left="104" Canvas.Top="120" Width="136" Height="168" RadiusX="20" RadiusY="20" Fill="White"/>
+                <Rectangle Canvas.Left="272" Canvas.Top="120" Width="136" Height="104" RadiusX="20" RadiusY="20" Fill="White" Opacity="0.85"/>
+                <Rectangle Canvas.Left="272" Canvas.Top="248" Width="136" Height="144" RadiusX="20" RadiusY="20" Fill="White"/>
+                <Rectangle Canvas.Left="104" Canvas.Top="312" Width="136" Height="80" RadiusX="20" RadiusY="20" Fill="White" Opacity="0.85"/>
+            </Canvas>
+        </Viewbox>
+
+        <!-- Text fields on glass -->
+        <Style x:Key="Field" TargetType="TextBox">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource Accent}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd" CornerRadius="8" Background="#14FFFFFF" BorderBrush="{StaticResource Hairline}" BorderThickness="1" Padding="8,0">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" Focusable="False"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#990A84FF"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SecretField" TargetType="PasswordBox">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource Accent}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="Bd" CornerRadius="8" Background="#14FFFFFF" BorderBrush="{StaticResource Hairline}" BorderThickness="1" Padding="8,0">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" Focusable="False"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#990A84FF"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="EyeToggle" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" CornerRadius="8" Background="Transparent">
+                            <TextBlock x:Name="Glyph" Text="&#xE7B3;" FontFamily="{StaticResource Icons}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Glyph" Property="Text" Value="&#xED1A;"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Slim overlay-style scrollbar -->
         <Style TargetType="ScrollBar">
             <Setter Property="Width" Value="6"/>

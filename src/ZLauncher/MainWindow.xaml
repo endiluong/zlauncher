@@ -22,7 +22,7 @@
             <!-- Header (drag to move) -->
             <DockPanel Background="Transparent" MouseLeftButtonDown="OnHeaderDown">
                 <Image Source="pack://application:,,,/z.ico" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
-                <Button DockPanel.Dock="Right" Style="{StaticResource Flat}" Width="30" Height="30" Click="OnCloseClick" ToolTip="Close">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Flat}" Width="30" Height="30" Click="OnCloseClick" ToolTip="Close" AutomationProperties.Name="Close">
                     <TextBlock Text="&#xE711;" FontFamily="{StaticResource Icons}" FontSize="11"/>
                 </Button>
                 <Button DockPanel.Dock="Right" Style="{StaticResource Flat}" Width="30" Height="30" Click="OnMinimizeClick" ToolTip="Minimize (Ctrl+Alt+Z)">
@@ -79,7 +79,7 @@
                                 <DockPanel>
                                     <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                     <Grid>
-                                        <TextBlock x:Name="SearchHint" Text="Search my apps" Foreground="{StaticResource Faint}" FontSize="13" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                        <TextBlock x:Name="SearchHint" Text="Search apps" Foreground="{StaticResource Faint}" FontSize="13" VerticalAlignment="Center" IsHitTestVisible="False"/>
                                         <TextBox x:Name="Search" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Text}" CaretBrush="White"
                                                  FontSize="13" Padding="0" TextChanged="OnSearchChanged" PreviewKeyDown="OnSearchKey"/>
                                     </Grid>
@@ -89,6 +89,60 @@
 
                         <ScrollViewer Grid.Row="1" Margin="0,14,-10,0" Padding="0,0,10,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                             <StackPanel>
+                                <!-- Built-in: ZBoard (self-hosted board app in WSL) -->
+                                <StackPanel x:Name="ZBoardSection">
+                                    <TextBlock Text="BUILT-IN" Style="{StaticResource Label}"/>
+                                    <Border x:Name="ZBoardCard" CornerRadius="16" Background="{StaticResource Fill}" BorderBrush="{StaticResource Hairline}" BorderThickness="1"
+                                            Padding="14,12" Margin="0,0,0,16" ContextMenuOpening="OnZBoardMenu">
+                                        <Border.ContextMenu><ContextMenu/></Border.ContextMenu>
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <ContentControl Content="{StaticResource ZBoardIcon}" Width="40" Height="40" Margin="0,0,12,0"/>
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource Flat}" Width="32" Height="32" Click="OnZBoardSettings" AutomationProperties.Name="ZBoard settings" ToolTip="ZBoard settings (.env, start at boot, logs)">
+                                                    <TextBlock Text="&#xE713;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                                                </Button>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="ZBoard" FontSize="15" FontWeight="SemiBold"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                        <Ellipse x:Name="ZBoardDot" Width="7" Height="7" Fill="{StaticResource Faint}" VerticalAlignment="Center" Margin="0,1,6,0"/>
+                                                        <TextBlock x:Name="ZBoardStatus" Text="Checking..." Style="{StaticResource Caption}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DockPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                                <Button x:Name="ZBoardOpen" Style="{StaticResource PillButton}" Click="OnZBoardOpen" Background="#400A84FF" Padding="14,7,10,7"
+                                                        ToolTip="Open ZBoard through Tailscale">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE8A7;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                                        <TextBlock Text="Open"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button x:Name="ZBoardOpenMore" Style="{StaticResource PillButton}" Click="OnZBoardOpenMore" Padding="9,7" Margin="4,0,8,0" AutomationProperties.Name="More ways to open ZBoard" ToolTip="Open on localhost instead">
+                                                    <TextBlock Text="&#xE70D;" FontFamily="{StaticResource Icons}" FontSize="10" VerticalAlignment="Center" Margin="0,2,0,0"/>
+                                                </Button>
+                                                <Button x:Name="ZBoardStart" Style="{StaticResource PillButton}" Click="OnZBoardStart" Margin="0,0,8,0">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE768;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                                        <TextBlock Text="Start"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button x:Name="ZBoardRestart" Style="{StaticResource PillButton}" Click="OnZBoardStart" Margin="0,0,8,0" Visibility="Collapsed">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE72C;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                                        <TextBlock Text="Restart"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button x:Name="ZBoardStop" Style="{StaticResource PillButton}" Click="OnZBoardStop" Foreground="{StaticResource Red}" Visibility="Collapsed">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE71A;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                                        <TextBlock Text="Stop"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
                                 <TextBlock x:Name="AppsLabel" Text="MY APPS" Style="{StaticResource Label}"/>
                                 <ItemsControl x:Name="AppList" ItemTemplate="{DynamicResource TileTemplate}">
                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -96,7 +150,7 @@
                                 <TextBlock x:Name="AppsStatus" Text="No matching apps" Style="{StaticResource Caption}" Margin="4,6,0,0" Visibility="Collapsed"/>
 
                                 <!-- Empty state -->
-                                <StackPanel x:Name="AppsEmpty" HorizontalAlignment="Center" Margin="0,70,0,0" Visibility="Collapsed">
+                                <StackPanel x:Name="AppsEmpty" HorizontalAlignment="Center" Margin="0,24,0,0" Visibility="Collapsed">
                                     <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource Fill}" BorderBrush="{StaticResource Hairline}" BorderThickness="1" HorizontalAlignment="Center">
                                         <TextBlock Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="26" Foreground="{StaticResource Dim}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
