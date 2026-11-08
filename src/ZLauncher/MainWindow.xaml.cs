@@ -21,14 +21,16 @@ public partial class MainWindow : Window
     readonly ICollectionView _view;
     readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(1.5) };
     readonly DispatcherTimer _opacityTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    readonly DispatcherTimer _zboardTimer = new() { Interval = TimeSpan.FromSeconds(3) };
     int _tab;
-    bool _refreshing, _autostartBusy;
+    bool _refreshing, _autostartBusy, _zboardBusy, _zboardPolling;
     IntPtr _hwnd;
+    ZBoardSettingsWindow? _zboardSettings;
 
     const int HotkeyId = 0x5A4C;
 
-    /// <summary>The Apps side is hidden for now: Z Launcher only controls widgets. Set to true to bring back the pill and Apps.</summary>
-    const bool AppsEnabled = false;
+    /// <summary>Shows the pill and the Apps side. Set to false to make Z Launcher a widgets-only panel.</summary>
+    const bool AppsEnabled = true;
 
     public MainWindow()
     {
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
         UpdateAppsStatus();
 
         _statusTimer.Tick += (_, _) => RefreshWidget();
+        _zboardTimer.Tick += async (_, _) => await RefreshZBoard();
         _opacityTimer.Tick += (_, _) =>
         {
             _opacityTimer.Stop();
@@ -62,7 +65,12 @@ public partial class MainWindow : Window
         Loaded += (_, _) => SelectTab(AppsEnabled ? Math.Clamp(_settings.Tab, 0, 1) : 1, animate: false);
         PreviewKeyDown += OnWindowKey;
         Closing += (_, _) => SavePosition();
-        StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) _statusTimer.Stop(); else if (_tab == 1) _statusTimer.Start(); };
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized) { _statusTimer.Stop(); _zboardTimer.Stop(); }
+            else if (_tab == 1) _statusTimer.Start();
+            else { _ = RefreshZBoard(); _zboardTimer.Start(); }
+        };
     }
 
     // ---------- window chrome ----------
@@ -70,33 +78,13 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        _hwnd = new WindowInteropHelper(this).Handle;
-        var src = HwndSource.FromHwnd(_hwnd);
-        src.CompositionTarget.BackgroundColor = Colors.Transparent;
-        src.AddHook(WndProc);
-
-        // No system menu so DWM doesn't paint caption buttons over the glass (minimize box stays for the taskbar).
-        long style = GetWindowLongPtr(_hwnd, -16).ToInt64();
-        SetWindowLongPtr(_hwnd, -16, new IntPtr(style & ~0x80000L));
-
-        int on = 1, round = 2, border = 0x00403C3A, backdrop = 3 /* acrylic */;
-        DwmSetWindowAttribute(_hwnd, 20, ref on, 4);      // dark mode
-        DwmSetWindowAttribute(_hwnd, 33, ref round, 4);   // rounded corners
-        DwmSetWindowAttribute(_hwnd, 34, ref border, 4);  // border colour
-        var m = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
-        DwmExtendFrameIntoClientArea(_hwnd, ref m);
-        DwmSetWindowAttribute(_hwnd, 38, ref backdrop, 4);
-
+        _hwnd = Glass.Apply(this);
+        HwndSource.FromHwnd(_hwnd).AddHook(WndProc);
         RegisterHotKey(_hwnd, HotkeyId, 0x2 | 0x1 | 0x4000 /* Ctrl+Alt, no repeat */, 0x5A /* Z */);
     }
 
     IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == 0x86 /* WM_NCACTIVATE */ && wParam == IntPtr.Zero)
-        {
-            handled = true; // keep the acrylic look when inactive
-            return DefWindowProc(hwnd, msg, new IntPtr(1), lParam);
-        }
         if (msg == 0x312 /* WM_HOTKEY */ && wParam.ToInt32() == HotkeyId)
         {
             handled = true;
@@ -160,8 +148,8 @@ public partial class MainWindow : Window
         WidgetsTab.Foreground = tab == 1 ? (Brush)FindResource("Text") : (Brush)FindResource("Dim");
 
         if (AppsEnabled && _settings.Tab != tab) { _settings.Tab = tab; _settings.Save(); }
-        if (tab == 1) { RefreshWidget(); RefreshAutostart(); _statusTimer.Start(); }
-        else { _statusTimer.Stop(); Search.Focus(); }
+        if (tab == 1) { RefreshWidget(); RefreshAutostart(); _statusTimer.Start(); _zboardTimer.Stop(); }
+        else { _statusTimer.Stop(); Search.Focus(); _ = RefreshZBoard(); _zboardTimer.Start(); }
     }
 
     static void Slide(TranslateTransform t, double to, int ms, IEasingFunction ease)
@@ -188,12 +176,15 @@ public partial class MainWindow : Window
         UpdateAppsStatus();
     }
 
+    bool ZBoardMatches => Search.Text.Length == 0 || "ZBoard".Contains(Search.Text.Trim(), StringComparison.CurrentCultureIgnoreCase);
+
     void UpdateAppsStatus()
     {
-        bool none = _apps.Count == 0;
-        AppsEmpty.Visibility = none ? Visibility.Visible : Visibility.Collapsed;
-        AppsLabel.Visibility = none ? Visibility.Collapsed : Visibility.Visible;
-        AppsStatus.Visibility = !none && _view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+        bool none = _apps.Count == 0, searching = Search.Text.Length > 0;
+        ZBoardSection.Visibility = ZBoardMatches ? Visibility.Visible : Visibility.Collapsed;
+        AppsEmpty.Visibility = none && !searching ? Visibility.Visible : Visibility.Collapsed;
+        AppsLabel.Visibility = searching && _view.IsEmpty ? Visibility.Collapsed : Visibility.Visible;
+        AppsStatus.Visibility = searching && _view.IsEmpty && !ZBoardMatches ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void OnAddAppClick(object sender, RoutedEventArgs e)
@@ -247,6 +238,11 @@ public partial class MainWindow : Window
             Launch(first, admin: Keyboard.Modifiers.HasFlag(ModifierKeys.Control | ModifierKeys.Shift));
             e.Handled = true;
         }
+        else if (e.Key == Key.Enter && Search.Text.Length > 0 && ZBoardMatches)
+        {
+            OpenZBoard(ZBoardControl.TailscaleUrl);
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape)
         {
             if (Search.Text.Length > 0) Search.Clear();
@@ -292,6 +288,123 @@ public partial class MainWindow : Window
         var remove = new MenuItem { Header = "Remove from Z Launcher" };
         remove.Click += (_, _) => RemoveApp(app);
         menu.Items.Add(remove);
+    }
+
+    // ---------- Apps: ZBoard (built in) ----------
+
+    async Task RefreshZBoard()
+    {
+        if (_zboardBusy || _zboardPolling) return;
+        _zboardPolling = true;
+        try { ShowZBoardState(await ZBoardControl.IsRunningAsync()); }
+        finally { _zboardPolling = false; }
+    }
+
+    void ShowZBoardState(bool running, string? message = null)
+    {
+        if (_zboardBusy) return;
+        ZBoardStatus.Text = message ?? (running ? "Running on localhost:3000" : "Stopped");
+        ZBoardDot.Fill = (Brush)FindResource(running ? "Green" : "Faint");
+        ZBoardStart.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
+        ZBoardRestart.Visibility = ZBoardStop.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+        ZBoardStart.IsEnabled = ZBoardRestart.IsEnabled = ZBoardStop.IsEnabled = true;
+    }
+
+    void SetZBoardBusy(string text)
+    {
+        _zboardBusy = true;
+        ZBoardStatus.Text = text;
+        ZBoardDot.Fill = (Brush)FindResource("Accent");
+        ZBoardStart.IsEnabled = ZBoardRestart.IsEnabled = ZBoardStop.IsEnabled = false;
+    }
+
+    async void OnZBoardStart(object sender, RoutedEventArgs e)
+    {
+        if (_zboardBusy) return;
+        bool restart = sender == ZBoardRestart;
+        SetZBoardBusy(restart ? "Restarting..." : "Starting...");
+        var (ok, message) = await ZBoardControl.StartAsync();
+        _zboardBusy = false;
+        bool running = await ZBoardControl.IsRunningAsync();
+        ShowZBoardState(running, ok ? null : message);
+    }
+
+    async void OnZBoardStop(object sender, RoutedEventArgs e)
+    {
+        if (_zboardBusy) return;
+        SetZBoardBusy("Stopping...");
+        bool stopped = await ZBoardControl.StopAsync();
+        _zboardBusy = false;
+        ShowZBoardState(!stopped, stopped ? null : "Still running (couldn't stop it)");
+    }
+
+    void OnZBoardOpen(object sender, RoutedEventArgs e) => OpenZBoard(ZBoardControl.TailscaleUrl);
+
+    void OnZBoardOpenMore(object sender, RoutedEventArgs e)
+    {
+        var button = (Button)sender;
+        var menu = new ContextMenu();
+        AddOpenItems(menu);
+        menu.PlacementTarget = button;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    void AddOpenItems(ItemsControl menu)
+    {
+        var tailscale = new MenuItem { Header = "Open via Tailscale", InputGestureText = "zboard.coat-halosaur.ts.net" };
+        tailscale.Click += (_, _) => OpenZBoard(ZBoardControl.TailscaleUrl);
+        menu.Items.Add(tailscale);
+        var local = new MenuItem { Header = "Open on this PC", InputGestureText = "localhost:3000" };
+        local.Click += (_, _) => OpenZBoard(ZBoardControl.LocalUrl);
+        menu.Items.Add(local);
+    }
+
+    void OpenZBoard(string url)
+    {
+        try
+        {
+            ZBoardControl.Open(url);
+            Search.Clear();
+            WindowState = WindowState.Minimized;
+        }
+        catch (Exception ex) { ZBoardStatus.Text = "Couldn't open the browser: " + ex.Message; }
+    }
+
+    void OnZBoardMenu(object sender, ContextMenuEventArgs e)
+    {
+        var menu = ZBoardCard.ContextMenu!;
+        menu.Items.Clear();
+        AddOpenItems(menu);
+        menu.Items.Add(new Separator());
+        bool running = ZBoardStop.Visibility == Visibility.Visible;
+        foreach (var (header, handler, enabled) in new (string, RoutedEventHandler, bool)[]
+        {
+            ("Start", OnZBoardStart, !running),
+            ("Restart", (s, a) => OnZBoardStart(ZBoardRestart, a), running),
+            ("Stop", OnZBoardStop, running),
+        })
+        {
+            var item = new MenuItem { Header = header, IsEnabled = enabled && !_zboardBusy };
+            item.Click += handler;
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var settings = new MenuItem { Header = "Settings..." };
+        settings.Click += OnZBoardSettings;
+        menu.Items.Add(settings);
+        var log = new MenuItem { Header = "Open server log" };
+        log.Click += (_, _) => { if (System.IO.File.Exists(ZBoardControl.ServerLog)) ZBoardControl.OpenFile(ZBoardControl.ServerLog); };
+        menu.Items.Add(log);
+    }
+
+    void OnZBoardSettings(object sender, RoutedEventArgs e)
+    {
+        if (_zboardSettings is { IsLoaded: true }) { _zboardSettings.Activate(); return; }
+        _zboardSettings = new ZBoardSettingsWindow { Owner = this };
+        _zboardSettings.Restarted += () => _ = RefreshZBoard();
+        _zboardSettings.Closed += (_, _) => _zboardSettings = null;
+        _zboardSettings.Show();
     }
 
     // ---------- Widgets: ZMonitor ----------
@@ -403,11 +516,5 @@ public partial class MainWindow : Window
 
     // ---------- Win32 ----------
 
-    [StructLayout(LayoutKind.Sequential)] struct MARGINS { public int Left, Right, Top, Bottom; }
-    [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
-    [DllImport("dwmapi.dll")] static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int idx);
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int idx, IntPtr value);
-    [DllImport("user32.dll")] static extern IntPtr DefWindowProc(IntPtr hwnd, int msg, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint vk);
 }

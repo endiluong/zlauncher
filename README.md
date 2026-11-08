@@ -4,25 +4,55 @@ A frosted-glass launcher for Windows 11 with two sides behind a sliding pill: **
 
 <table>
   <tr>
+    <td align="center"><img src="assets/screenshots/zlauncher-apps.png" alt="Z Launcher, Apps tab with the built-in ZBoard tile" height="560"></td>
     <td align="center"><img src="assets/screenshots/zlauncher.png" alt="Z Launcher, Widgets tab controlling ZMonitor" height="560"></td>
     <td align="center"><img src="assets/screenshots/zmonitor.png" alt="ZMonitor widget with FPS, CPU, GPU, memory and network" height="560"></td>
   </tr>
   <tr>
+    <td align="center"><b>Z Launcher</b>: Apps tab</td>
     <td align="center"><b>Z Launcher</b>: Widgets tab</td>
     <td align="center"><b>ZMonitor</b>: Memory collapsed, Network expanded</td>
   </tr>
 </table>
 
-> **For now Z Launcher only controls widgets:** the Apps side and the pill are hidden.
-> To bring them back, set `AppsEnabled = true` in [`MainWindow.xaml.cs`](src/ZLauncher/MainWindow.xaml.cs).
-
 | Side | What it does |
 |---|---|
+| **Apps** | The built-in **ZBoard** tile, then *your* apps (**My apps**, starts empty). Add an `.exe`, shortcut or script with **+ Add**, or drop it on the page. Search, launch (Enter launches the first match), and right-click for *Run as administrator*, *Open file location* or *Remove*. |
 | **Widgets** | Manage desktop widgets. Today that's **ZMonitor**: on/off, per-section on/off (FPS, CPU, GPU, Memory, Network), Always on top, Lock position, Start with Windows, Opacity, Next monitor, Quit. |
-| **Apps** *(hidden)* | Only *your* apps. Starts empty. Add an `.exe`, shortcut or script with **+ Add**, or drop it on the page. Search, launch (Enter launches the first match), and right-click for *Run as administrator*, *Open file location* or *Remove*. |
 
-**Ctrl+Alt+Z** shows or hides the launcher from anywhere, and **Esc** minimizes it. With Apps enabled, click **Apps / Widgets** or press **Ctrl+Tab** to slide between the sides.
+**Ctrl+Alt+Z** shows or hides the launcher from anywhere, and **Esc** minimizes it. Click **Apps / Widgets** or press **Ctrl+Tab** to slide between the sides.
 Apps are launched as your normal user. The launcher itself never runs as admin.
+To make Z Launcher a widgets-only panel again, set `AppsEnabled = false` in [`MainWindow.xaml.cs`](src/ZLauncher/MainWindow.xaml.cs).
+
+## ZBoard (built-in app)
+
+ZBoard is a self-hosted board app that runs in WSL Ubuntu (`~/zboard`, port 3000).
+Its tile is always on the Apps page:
+
+* **Status**: polls `http://localhost:3000/` every few seconds while the Apps page is open. Any HTTP answer (even 401) counts as *Running*.
+* **Open**: opens ZBoard through Tailscale in your default browser. The arrow next to it offers `http://localhost:3000` instead.
+* **Start / Restart**: `wsl.exe -d ubuntu -- bash -l ~/.local/bin/zb-start` (restarts the server in the background).
+  A hidden `wsl.exe` then stays attached while something listens on :3000, so WSL doesn't shut the idle distro down; it ends by itself after **Stop**.
+* **Stop**: `wsl.exe -d ubuntu -- bash -lc "fuser -k 3000/tcp"`.
+* **Settings** (gear, or right-click the tile):
+  * **Environment**: edits `~/zboard/.env` as key/value rows. Comments, blank lines and order are kept; only changed lines are rewritten.
+    Secrets (`APP_PASSWORD`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_BACKUP_PASSPHRASE`, anything named `*SECRET*`, `*TOKEN*`, `*PASSWORD*`, `*PASSPHRASE*`) are masked, with a show/hide toggle.
+    **Save and restart ZBoard** applies the changes. Values are never logged.
+  * **Start at boot**: registers or removes the `ZBoard` scheduled task (at startup, before anyone logs in, restarts on failure).
+    Windows asks for admin rights, then for your Windows password with its own credential prompt; Z Launcher never sees or stores it.
+    The switch shows the task's state, its last run, and whether it uses an older command.
+  * **Logs**: opens `~/zboard/data/server.log`, `~/zboard-autostart.log` (written by the boot task), or the `~/zboard` folder.
+
+The boot task runs:
+
+```
+wsl.exe -d Ubuntu --exec bash -lc ". ~/.nvm/nvm.sh; cd ~/zboard && exec ./start.sh >> ~/zboard-autostart.log 2>&1"
+```
+
+It differs from ZBoard's `scripts/windows/install-autostart.ps1` in two ways. It uses double quotes, because `wsl.exe --exec` doesn't treat single quotes as quotes. It also loads nvm, because a non-interactive login shell never reaches the nvm lines in `~/.bashrc`, so `node` would be missing.
+`start.sh` ends with `exec node`, so `wsl.exe` stays attached while ZBoard runs, which keeps WSL up.
+
+The WSL paths and URLs are constants in [`ZBoardControl.cs`](src/ZLauncher/ZBoardControl.cs).
 
 ## Projects
 

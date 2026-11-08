@@ -1,0 +1,102 @@
+<Window x:Class="ZLauncher.ZBoardSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ZBoard settings" Icon="pack://application:,,,/z.ico"
+        Width="520" Height="680" WindowStyle="SingleBorderWindow" ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterOwner" Background="Transparent" Foreground="{StaticResource Text}" ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable Display, Segoe UI" UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="-1" CaptionHeight="0" ResizeBorderThickness="0"
+                      CornerRadius="0" UseAeroCaptionButtons="False" NonClientFrameEdges="None"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Background="#40000000" Padding="18,14,18,16">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <DockPanel Background="Transparent" MouseLeftButtonDown="OnHeaderDown">
+                <ContentControl Content="{StaticResource ZBoardIcon}" Width="24" Height="24"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Flat}" Width="30" Height="30" Click="OnCloseClick" ToolTip="Close" AutomationProperties.Name="Close">
+                    <TextBlock Text="&#xE711;" FontFamily="{StaticResource Icons}" FontSize="11"/>
+                </Button>
+                <TextBlock Text="ZBoard settings" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </DockPanel>
+
+            <ScrollViewer Grid.Row="1" Margin="0,16,-10,0" Padding="0,0,10,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <StackPanel>
+
+                    <!-- ===== Environment ===== -->
+                    <TextBlock Text="ENVIRONMENT" Style="{StaticResource Label}"/>
+                    <Border CornerRadius="16" Background="{StaticResource Fill}" BorderBrush="{StaticResource Hairline}" BorderThickness="1" Padding="16,12,16,14">
+                        <StackPanel>
+                            <TextBlock x:Name="EnvPathText" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
+                            <ItemsControl x:Name="EnvRows" Focusable="False"/>
+                            <TextBlock x:Name="EnvError" Style="{StaticResource Caption}" Foreground="{StaticResource Red}" Visibility="Collapsed" Margin="0,4,0,0"/>
+                            <DockPanel Margin="0,10,0,0">
+                                <Button Style="{StaticResource PillButton}" Click="OnAddVariable" ToolTip="Add a variable at the end of the file">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" FontSize="11" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                        <TextBlock Text="Variable"/>
+                                    </StackPanel>
+                                </Button>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="SaveButton" Style="{StaticResource PillButton}" Click="OnSave" Margin="0,0,8,0" Content="Save"/>
+                                    <Button x:Name="SaveRestartButton" Style="{StaticResource PillButton}" Click="OnSaveRestart" Background="#400A84FF" Content="Save and restart ZBoard"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBlock x:Name="EnvStatus" Style="{StaticResource Caption}" Margin="0,8,0,0" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== Start at boot ===== -->
+                    <TextBlock Text="START AT BOOT" Style="{StaticResource Label}" Margin="4,18,0,8"/>
+                    <Border CornerRadius="16" Background="{StaticResource Fill}" BorderBrush="{StaticResource Hairline}" BorderThickness="1" Padding="16,12,16,14">
+                        <StackPanel>
+                            <DockPanel>
+                                <ToggleButton x:Name="BootSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Checked="OnBootSwitch" Unchecked="OnBootSwitch" IsEnabled="False"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Start ZBoard when Windows starts" FontSize="13"/>
+                                    <TextBlock Text="Before anyone logs in, so it's back after updates and reboots." Style="{StaticResource Caption}" FontSize="10.5"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Ellipse x:Name="BootDot" Width="7" Height="7" Fill="{StaticResource Faint}" VerticalAlignment="Top" Margin="0,5,8,0"/>
+                                <TextBlock x:Name="BootText" Text="Checking..." Style="{StaticResource Caption}" MaxWidth="420"/>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Caption}" Foreground="{StaticResource Faint}" FontSize="10.5" Margin="0,8,0,0"
+                                       Text="Sets up the &quot;ZBoard&quot; scheduled task. Windows asks for admin rights, then for your Windows password, which it keeps with the task (it runs without anyone logged in). Z Launcher never sees or stores the password."/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== Logs ===== -->
+                    <TextBlock Text="LOGS" Style="{StaticResource Label}" Margin="4,18,0,8"/>
+                    <WrapPanel>
+                        <Button Style="{StaticResource PillButton}" Click="OnServerLog" Margin="0,0,8,8" ToolTip="~/zboard/data/server.log">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9F9;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                <TextBlock Text="Server log"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource PillButton}" Click="OnAutostartLog" Margin="0,0,8,8" ToolTip="~/zboard-autostart.log (written by the boot task)">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9F9;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                <TextBlock Text="Boot log"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource PillButton}" Click="OnOpenFolder" Margin="0,0,8,8" ToolTip="~/zboard">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE838;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                                <TextBlock Text="ZBoard folder"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                    <TextBlock x:Name="LogStatus" Style="{StaticResource Caption}" Visibility="Collapsed"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>
